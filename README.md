@@ -60,12 +60,16 @@ make up
 ```
 
 Starts 4 containers:
-| Container | URL | Purpose |
-|-----------|-----|---------|
-| `tch-vault` | http://localhost:8200 | Vault dev mode (token: `root`) |
-| `tch-postgres` | localhost:5432 | Vault dynamic DB credentials target |
-| `tch-localstack` | http://localhost:4566 | AWS API emulator for terraform apply |
-| `tch-ansible-target` | localhost:2222 (SSH) | Ubuntu 22.04 for Ansible playbooks |
+
+| Container | How to access | Protocol |
+|-----------|--------------|----------|
+| `tch-vault` | Chrome → http://localhost:8200 (token: `root`) | HTTP — browser works |
+| `tch-postgres` | `psql -h localhost -p 5432 -U vault_admin -d payments` | PostgreSQL wire — **not a browser** |
+| `tch-localstack` | `curl http://localhost:4566/_localstack/health` | HTTP — use curl or aws CLI, not browser root |
+| `tch-ansible-target` | `ssh -i ansible/demo_key -p 2222 root@localhost` | SSH — **not a browser** |
+
+> **Only Vault has a browser UI.** PostgreSQL speaks the Postgres wire protocol; Ansible target speaks SSH;
+> LocalStack has an HTTP API but no browser UI — verify it with `curl` or `make status`.
 
 ---
 

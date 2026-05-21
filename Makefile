@@ -88,12 +88,14 @@ up: ## Start all services (vault, postgres, localstack, ansible-target)
 	@docker compose ps
 	@echo ""
 	@echo "$(GREEN)Services ready:$(RESET)"
-	@echo "  Vault UI:     http://localhost:8200  (token: root)"
-	@echo "  LocalStack:   http://localhost:4566/_localstack/health"
-	@echo "  PostgreSQL:   localhost:5432  (user: vault_admin)"
-	@echo "  Ansible SSH:  ssh -i ansible/demo_key -p 2222 root@localhost"
 	@echo ""
-	@echo "Next: make vault-setup   (configure Vault dynamic DB creds)"
+	@echo "  $(CYAN)Vault$(RESET)    → Chrome: http://localhost:8200   (token: root)   ← browser UI"
+	@echo "  $(CYAN)LocalStack$(RESET) → curl http://localhost:4566/_localstack/health   ← HTTP API, no browser UI"
+	@echo "  $(CYAN)Postgres$(RESET)  → psql -h localhost -p 5432 -U vault_admin -d payments   ← DB wire protocol, not HTTP"
+	@echo "  $(CYAN)Ansible$(RESET)   → ssh -i ansible/demo_key -p 2222 root@localhost   ← SSH, not HTTP"
+	@echo ""
+	@echo "  Verify all: make status"
+	@echo "  Next step:  make vault-setup"
 
 .PHONY: down
 down: ## Stop all services and remove containers
@@ -104,12 +106,30 @@ logs: ## Follow logs from all services (Ctrl+C to stop)
 	@docker compose logs -f
 
 .PHONY: status
-status: ## Show running container status and service health
+status: ## Verify all 4 services are up and responding correctly
+	@echo "$(CYAN)==> Container status$(RESET)"
 	@docker compose ps
 	@echo ""
-	@echo "Vault:      $$(curl -sf http://localhost:8200/v1/sys/health | python3 -c 'import sys,json; d=json.load(sys.stdin); print("sealed=" + str(d.get("sealed", "?")) + " version=" + d.get("version","?"))' 2>/dev/null || echo 'not running')"
-	@echo "LocalStack: $$(curl -sf http://localhost:4566/_localstack/health | python3 -c 'import sys,json; d=json.load(sys.stdin); print(str(d.get("services", {})))' 2>/dev/null || echo 'not running')"
-	@echo "Postgres:   $$(docker exec tch-postgres pg_isready -U vault_admin 2>/dev/null || echo 'not running')"
+	@echo "$(CYAN)==> Service health checks$(RESET)"
+	@echo ""
+	@printf "  %-14s " "Vault (8200):"
+	@curl -sf http://localhost:8200/v1/sys/health > /dev/null 2>&1 && \
+		echo "$(GREEN)UP$(RESET) — browser: http://localhost:8200  token: root" || \
+		echo "$(YELLOW)DOWN$(RESET) — run: make up"
+	@printf "  %-14s " "LocalStack:"
+	@curl -sf http://localhost:4566/_localstack/health > /dev/null 2>&1 && \
+		echo "$(GREEN)UP$(RESET) — verify: curl http://localhost:4566/_localstack/health" || \
+		echo "$(YELLOW)DOWN$(RESET) — run: make up"
+	@printf "  %-14s " "Postgres:"
+	@docker exec tch-postgres pg_isready -U vault_admin -q 2>/dev/null && \
+		echo "$(GREEN)UP$(RESET) — connect: psql -h localhost -p 5432 -U vault_admin -d payments" || \
+		echo "$(YELLOW)DOWN$(RESET) — run: make up"
+	@printf "  %-14s " "Ansible SSH:"
+	@ssh -i ansible/demo_key -p 2222 -o ConnectTimeout=3 -o StrictHostKeyChecking=no \
+		root@localhost true 2>/dev/null && \
+		echo "$(GREEN)UP$(RESET) — connect: ssh -i ansible/demo_key -p 2222 root@localhost" || \
+		echo "$(YELLOW)DOWN$(RESET) — run: make setup && make up"
+	@echo ""
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DAY 1 — Terraform Security Scanning
