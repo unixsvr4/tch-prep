@@ -1,0 +1,31 @@
+---
+# group_vars/all.yml — variables applied to all hosts
+# Non-sensitive config (no passwords here — those go in group_vars/prod/vault.yml,
+# encrypted with ansible-vault).
+#
+# Study note: in production, sensitive vars use ansible-vault encryption:
+#   ansible-vault encrypt group_vars/prod/vault.yml
+# Then run with: ansible-playbook site.yml --vault-password-file ~/.vault_pass
+
+# ── App settings ──────────────────────────────────────────────────────────
+app_name: payments
+app_user: payments
+app_group: payments
+app_home: /opt/payments
+
+# ── SSH hardening targets ─────────────────────────────────────────────────
+# Used by the hardening playbook (playbooks/hardening.yml)
+ssh_idle_timeout: 900        # PCI-DSS 8.2.8: 15-minute session timeout
+ssh_max_auth_tries: 3        # Limit brute force attempts
+
+# ── Audit settings ────────────────────────────────────────────────────────
+auditd_rules_file: /etc/audit/rules.d/payment.rules
+auditd_log_size: 8388608     # 8MB max log size before rotation
+
+# ── Vault / secrets (non-sensitive config only) ───────────────────────────
+vault_addr: "http://tch-vault:8200"   # Vault address (from docker-compose network)
+vault_role: "payment-app"             # Vault AppRole name
+
+# ── Sensitive variables live in group_vars/prod/vault.yml (ansible-vault encrypted) ───
+# vault_db_password: !vault | ...
+# vault_api_key: !vault | ...
