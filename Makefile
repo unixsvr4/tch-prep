@@ -4,11 +4,11 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-# ── Colors ────────────────────────────────────────────────────────────────────
-GREEN  := \033[0;32m
-YELLOW := \033[0;33m
-CYAN   := \033[0;36m
-RESET  := \033[0m
+# ── Colors (tput produces real escape bytes at make startup — no \033 literals) ──
+GREEN  := $(shell tput setaf 2 2>/dev/null)
+YELLOW := $(shell tput setaf 3 2>/dev/null)
+CYAN   := $(shell tput setaf 6 2>/dev/null)
+RESET  := $(shell tput sgr0  2>/dev/null)
 
 # ── Vault / AWS env for local practice ───────────────────────────────────────
 export VAULT_ADDR     ?= http://localhost:8200

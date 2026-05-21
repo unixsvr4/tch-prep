@@ -42,6 +42,12 @@ resource "aws_db_instance" "payments" {
 
   parameter_group_name = aws_db_parameter_group.force_ssl.name
 
+  # Ship DB logs to CloudWatch for centralized monitoring + SIEM integration
+  enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
+
+  # IAM authentication as an additional layer alongside password — PCI-DSS 8.2
+  iam_database_authentication_enabled = true
+
   lifecycle {
     prevent_destroy = true   # GOOD: prevents accidental terraform destroy of payment DB
   }
@@ -52,66 +58,81 @@ resource "aws_db_instance" "payments" {
 # Only the app tier can reach the DB tier — no internet access at all.
 # PCI-DSS 1.3: restrict inbound/outbound traffic to only what is necessary.
 
+# Security groups must be defined WITHOUT cross-referencing each other inline.
+# If app.egress references db.id AND db.ingress references app.id, Terraform
+# sees a cycle: app → db → app. The fix: declare the SGs with no rules, then
+# add the cross-referencing rules as separate aws_security_group_rule resources.
+
 resource "aws_security_group" "app" {
   name        = "payment-app-sg"
   description = "Payment app tier — allows HTTPS in from ALB, PSQL out to DB"
   vpc_id      = aws_vpc.payments.id
-
-  # Inbound HTTPS from ALB only (not from internet directly)
-  ingress {
-    from_port       = 8443
-    to_port         = 8443
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
-    description     = "HTTPS from ALB only"
-  }
-
-  # Outbound: only PostgreSQL to DB tier
-  egress {
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.db.id]
-    description     = "PostgreSQL to DB tier"
-  }
-
-  # Outbound: HTTPS for Secrets Manager / Vault API calls
-  egress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "HTTPS to AWS APIs (Secrets Manager, KMS)"
-  }
+  # Rules are added below as aws_security_group_rule resources (avoids cycle)
 }
 
 resource "aws_security_group" "db" {
   name        = "payment-db-sg"
   description = "Payment DB tier — only accepts connections from app tier"
   vpc_id      = aws_vpc.payments.id
-
-  # GOOD: only the app tier can reach the database — not 0.0.0.0/0
-  ingress {
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.app.id]
-    description     = "PostgreSQL from app tier only — PCI-DSS 1.3"
-  }
+  # Rules are added below as aws_security_group_rule resources (avoids cycle)
 }
 
 resource "aws_security_group" "alb" {
   name        = "payment-alb-sg"
   description = "ALB — accepts HTTPS from internet, forwards to app tier"
   vpc_id      = aws_vpc.payments.id
+}
 
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "HTTPS from internet to ALB (only entry point)"
-  }
+# ── Security group rules (separate resources to break the cross-reference cycle) ─
+
+resource "aws_security_group_rule" "alb_https_in" {
+  type              = "ingress"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.alb.id
+  description       = "HTTPS from internet to ALB (only entry point)"
+}
+
+resource "aws_security_group_rule" "app_https_from_alb" {
+  type                     = "ingress"
+  from_port                = 8443
+  to_port                  = 8443
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.alb.id   # app references alb — no cycle
+  security_group_id        = aws_security_group.app.id
+  description              = "HTTPS from ALB only"
+}
+
+resource "aws_security_group_rule" "app_psql_to_db" {
+  type                     = "egress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.db.id    # app → db (one direction)
+  security_group_id        = aws_security_group.app.id
+  description              = "PostgreSQL to DB tier"
+}
+
+resource "aws_security_group_rule" "app_https_to_aws_apis" {
+  type              = "egress"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.app.id
+  description       = "HTTPS to AWS APIs (Secrets Manager, KMS)"
+}
+
+resource "aws_security_group_rule" "db_psql_from_app" {
+  type                     = "ingress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.app.id   # db ← app (other direction, separate resource)
+  security_group_id        = aws_security_group.db.id
+  description              = "PostgreSQL from app tier only (PCI-DSS 1.3)"
 }
 
 
@@ -157,6 +178,22 @@ resource "aws_s3_bucket_logging" "payment_logs" {
 
 resource "aws_s3_bucket" "access_logs" {
   bucket = "tch-s3-access-logs-${var.account_id}"
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "access_logs" {
+  bucket = aws_s3_bucket.access_logs.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.s3.arn
+    }
+    bucket_key_enabled = true
+  }
+}
+
+resource "aws_s3_bucket_versioning" "access_logs" {
+  bucket = aws_s3_bucket.access_logs.id
+  versioning_configuration { status = "Enabled" }
 }
 
 resource "aws_s3_bucket_public_access_block" "access_logs" {
@@ -274,8 +311,13 @@ resource "aws_dynamodb_table" "terraform_locks" {
     type = "S"
   }
 
-  # Encrypt the lock table too — it contains resource identifiers
+  # Encrypt the lock table — it contains resource identifiers
   server_side_encryption {
+    enabled = true
+  }
+
+  # Point-in-time recovery — restore the lock table if accidentally corrupted
+  point_in_time_recovery {
     enabled = true
   }
 }
@@ -304,6 +346,11 @@ resource "aws_cloudtrail" "payments" {
     }
   }
 
+  # CloudWatch Logs integration — real-time alerting on CloudTrail events
+  # PCI-DSS 10.2: all CDE access logged; CloudWatch enables alerting on events.
+  cloud_watch_logs_group_arn = "${aws_cloudwatch_log_group.cloudtrail.arn}:*"
+  cloud_watch_logs_role_arn  = aws_iam_role.cloudtrail_cw.arn
+
   depends_on = [aws_s3_bucket_policy.cloudtrail]
 }
 
@@ -312,12 +359,60 @@ resource "aws_s3_bucket" "cloudtrail" {
   force_destroy = false   # GOOD: can't accidentally destroy audit log bucket
 }
 
+resource "aws_s3_bucket_server_side_encryption_configuration" "cloudtrail" {
+  bucket = aws_s3_bucket.cloudtrail.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.cloudtrail.arn
+    }
+    bucket_key_enabled = true
+  }
+}
+
+resource "aws_s3_bucket_versioning" "cloudtrail" {
+  bucket = aws_s3_bucket.cloudtrail.id
+  versioning_configuration { status = "Enabled" }
+}
+
 resource "aws_s3_bucket_public_access_block" "cloudtrail" {
   bucket                  = aws_s3_bucket.cloudtrail.id
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
+}
+
+# CloudTrail → CloudWatch Logs integration (PCI-DSS 10.2 + real-time alerting)
+resource "aws_cloudwatch_log_group" "cloudtrail" {
+  name              = "/aws/cloudtrail/tch-payments"
+  retention_in_days = 365   # PCI-DSS 10.5: retain audit logs ≥ 12 months
+  kms_key_id        = aws_kms_key.cloudtrail.arn
+}
+
+resource "aws_iam_role" "cloudtrail_cw" {
+  name = "cloudtrail-cloudwatch-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "cloudtrail.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "cloudtrail_cw" {
+  name = "cloudtrail-to-cloudwatch"
+  role = aws_iam_role.cloudtrail_cw.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
+      Resource = "${aws_cloudwatch_log_group.cloudtrail.arn}:*"
+    }]
+  })
 }
 
 resource "aws_s3_bucket_policy" "cloudtrail" {
@@ -379,6 +474,53 @@ resource "aws_subnet" "private_db" {
 
 data "aws_availability_zones" "available" {
   state = "available"
+}
+
+# VPC Flow Logs — capture all traffic metadata for security analysis
+# PCI-DSS 10.2: log all network access to CDE resources.
+# Flow logs go to S3 (CloudWatch Logs also works but S3 is cheaper for high-volume).
+resource "aws_flow_log" "payments" {
+  vpc_id          = aws_vpc.payments.id
+  traffic_type    = "ALL"   # log ACCEPT and REJECT — REJECT alone misses lateral movement
+  iam_role_arn    = aws_iam_role.flow_logs.arn
+  log_destination = aws_cloudwatch_log_group.flow_logs.arn
+}
+
+resource "aws_cloudwatch_log_group" "flow_logs" {
+  name              = "/aws/vpc/tch-payments-flow-logs"
+  retention_in_days = 365
+  kms_key_id        = aws_kms_key.cloudtrail.arn
+}
+
+resource "aws_iam_role" "flow_logs" {
+  name = "vpc-flow-logs-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "vpc-flow-logs.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "flow_logs" {
+  name = "vpc-flow-logs-policy"
+  role = aws_iam_role.flow_logs.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams"
+      ]
+      Resource = "*"
+    }]
+  })
 }
 
 
