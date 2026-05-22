@@ -30,7 +30,8 @@
 vault_db_password: "Pg@ssw0rd2024!"
 vault_db_user: "payments_app"
 vault_stripe_api_key: "sk_live_EXAMPLE_KEY"
-vault_vault_token: "s.EXAMPLE_VAULT_TOKEN"    # Vault token for payment-app policy
+# Vault token for payment-app policy
+vault_vault_token: "s.EXAMPLE_VAULT_TOKEN"
 
 # In production, this file would look like:
 # vault_db_password: !vault |

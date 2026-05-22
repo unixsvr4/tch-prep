@@ -30,6 +30,9 @@ provider "aws" {
   skip_credentials_validation = true
   skip_metadata_api_check     = true
   skip_requesting_account_id  = true
+  # Required: LocalStack only supports path-style S3 URLs (localhost:4566/bucket),
+  # not virtual-hosted-style (bucket.localhost:4566). Without this, aws_s3_bucket hangs forever.
+  s3_use_path_style           = true
 
   # Route ALL service calls through LocalStack
   endpoints {
