@@ -215,10 +215,11 @@
   handlers:
 
     - name: restart sshd
-      # Ubuntu names it 'ssh'; RHEL/Rocky name it 'sshd' — try both
+      # reload (SIGHUP) re-reads sshd_config without dropping the active Ansible connection.
+      # restart would kill the SSH session Ansible is using, causing "unreachable" errors.
       service:
         name: "{{ 'sshd' if 'sshd.service' in ansible_facts.services else 'ssh' }}"
-        state: restarted
+        state: reloaded
       ignore_errors: true
 
     - name: restart auditd
