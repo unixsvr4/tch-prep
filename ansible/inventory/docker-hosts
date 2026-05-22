@@ -9,4 +9,4 @@ ansible-target ansible_host=localhost ansible_port=2222 ansible_user=root
 # These would normally come from encrypted group_vars/prod/vault.yml
 # For practice, they're unencrypted here. See group_vars/prod/vault_example.yml
 # for the ansible-vault format.
-ansible_python_interpreter=/usr/bin/python
+ansible_python_interpreter=/usr/bin/python3
