@@ -242,7 +242,7 @@ ansible-vault encrypt_string 'Pg@ssw0rd2024!' --name 'vault_db_password' --vault
 ansible-vault create group_vars/prod/vault.yml --vault-password-file .vault_pass
 
 # Run playbook with vault password
-ansible-playbook -i inventory/docker-hosts playbooks/hardening.yml --vault-password-file .vault_pass
+ansible-playbook -i inventory/docker-hosts playbooks/hardening.yml --vault-password-file ./.vault_pass
 ```
 
 ---
@@ -256,14 +256,16 @@ The `terraform/day3-resilience/` directory has complete working Terraform for:
 - ECS auto-scaling (scale out 60s, scale in 300s cooldown)
 
 ```bash
-# Validate the DR configurations
-make validate-resilience  # part of validate-good target
+# Validate the DR configurations (resilience is included in validate-good)
+make validate-good
 
-# See what the architecture produces
+# Explore the DR architecture
 cd terraform/day3-resilience
 terraform init -backend=false
 terraform validate
-terraform output  # see RTO/RPO targets
+
+# Read the RTO/RPO targets directly from the config (no apply needed)
+grep -A4 '^output' main.tf
 ```
 
 **Key numbers to memorize:**
