@@ -5,10 +5,11 @@
 # Built by: `make setup` (which generates the demo SSH key first)
 #
 # What's installed:
-#   openssh-server  — sshd for Ansible to connect
-#   python3         — required by all Ansible modules
-#   auditd          — target for the hardening playbook (PCI-DSS req 10)
-#   sudo            — for become: true in playbooks
+#   openssh-server    — sshd for Ansible to connect
+#   python3           — required by all Ansible modules
+#   python3-psycopg2  — required by ansible postgresql_user module (secrets-good.yml)
+#   auditd            — target for the hardening playbook (PCI-DSS req 10)
+#   sudo              — for become: true in playbooks
 #
 # Connect: ssh -i ansible/demo_key -p 2222 root@localhost
 # ============================================================
@@ -23,6 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openssh-server \
     python3 \
     python3-apt \
+    python3-psycopg2 \
     sudo \
     auditd \
     audispd-plugins \
