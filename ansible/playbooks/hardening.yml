@@ -30,6 +30,8 @@
   become: true
 
   vars_files:
+    # group_vars/all.yml: app_name, ssh_idle_timeout, auditd_rules_file, etc.
+    - ../group_vars/all.yml
     # In production: ansible-vault encrypted file
     # Run with: ansible-playbook hardening.yml --vault-password-file .vault_pass
     # For this practice demo: unencrypted example file
@@ -152,16 +154,19 @@
 
     # ── Service Hardening ─────────────────────────────────────────────────
 
+    - name: "Services | Gather service facts (needed to check what exists)"
+      ansible.builtin.service_facts:
+
     - name: "Services | Stop and disable unnecessary services"
       # Reduce attack surface: Bluetooth, CUPS, Avahi have no place on a payment server.
       # PCI-DSS 2.2.5: remove all unnecessary functionality.
+      # 'when' skips silently if the service isn't installed (clean output in Docker).
       service:
         name: "{{ item }}"
         state: stopped
         enabled: false
       loop: "{{ unused_services }}"
-      # Service may not exist in Docker container — that's fine
-      ignore_errors: true
+      when: "(item + '.service') in ansible_facts.services or item in ansible_facts.services"
 
     # ── File System Security ───────────────────────────────────────────────
 
@@ -173,6 +178,15 @@
         regexp: "^umask"
         line: "umask 027"
 
+    - name: "Permissions | Ensure /etc/payments directory exists"
+      file:
+        path: /etc/payments
+        state: directory
+        owner: payments
+        group: payments
+        mode: "0750"
+      ignore_errors: true
+
     - name: "Permissions | Deploy app config with strict permissions"
       # PCI-DSS 7.1: protect all system components and sensitive data.
       # mode 0600: owner-only read/write — other users cannot read the app config.
@@ -183,7 +197,6 @@
         group: payments
         # GOOD: owner read/write only — no_log on anything referencing this
         mode: "0600"
-      # /etc/payments may not exist in base container
       ignore_errors: true
 
     # ── Users ─────────────────────────────────────────────────────────────
@@ -202,10 +215,10 @@
   handlers:
 
     - name: restart sshd
+      # Ubuntu names it 'ssh'; RHEL/Rocky name it 'sshd' — try both
       service:
-        name: sshd
+        name: "{{ 'sshd' if 'sshd.service' in ansible_facts.services else 'ssh' }}"
         state: restarted
-      # Docker containers may not use standard sshd restart
       ignore_errors: true
 
     - name: restart auditd
