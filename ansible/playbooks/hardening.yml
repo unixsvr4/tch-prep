@@ -39,7 +39,10 @@
 
   vars:
     # SSH hardening
-    permit_root_login: "no"
+    # prohibit-password: disables password-based root login (PCI-DSS compliant) while
+    # keeping key-based root login (required for Ansible access in this practice env).
+    # In production: use a named non-root service account with sudo instead of root.
+    permit_root_login: "prohibit-password"
     password_authentication: "no"
     # 15 min
     client_alive_interval: "{{ ssh_idle_timeout | default(900) }}"
