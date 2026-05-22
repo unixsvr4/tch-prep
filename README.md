@@ -37,9 +37,15 @@ tch-prep/
 
 ## Quick Start (entire setup in ~10 minutes)
 
+> **All `make` commands must be run from inside the `tch-prep/` directory.**
+> ```bash
+> cd tch-prep   # do this once — all commands below assume you're here
+> ```
+
 ### Step 1 — Install tools (one-time)
 
 ```bash
+cd tch-prep
 make install-tools
 ```
 

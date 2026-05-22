@@ -1,8 +1,14 @@
 # tch-prep Makefile
-# Usage: make <target>    |    make help
+# Usage: cd tch-prep && make <target>    |    make help
 
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
+
+# Guard: fail immediately if run from the wrong directory.
+# Every target depends on this check running first.
+ifeq (,$(wildcard docker-compose.yml))
+$(error Run this from inside tch-prep/: cd /Users/macman/myclaude/tch-prep && make $(MAKECMDGOALS))
+endif
 
 # Colors via tput (produces real escape bytes -- no literal \033 sequences)
 GREEN  := $(shell tput setaf 2 2>/dev/null)
@@ -274,7 +280,7 @@ ansible-lint: ## Run ansible-lint on all playbooks
 .PHONY: localstack-init
 localstack-init: ## Init Terraform LocalStack provider (downloads plugins, run once)
 	@echo "$(CYAN)==> terraform init (LocalStack)$(RESET)"
-	@cd terraform/localstack && terraform init -no-color
+	@cd terraform/localstack && terraform init -upgrade -no-color
 
 .PHONY: localstack-plan
 localstack-plan: ## Plan secure payment infra against LocalStack (no AWS costs)
