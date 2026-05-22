@@ -6,8 +6,8 @@
 #
 # What's installed:
 #   openssh-server    — sshd for Ansible to connect
-#   python3           — required by all Ansible modules
-#   python3-psycopg2  — required by ansible postgresql_user module (secrets-good.yml)
+#   python           — required by all Ansible modules
+#   python-psycopg2  — required by ansible postgresql_user module (secrets-good.yml)
 #   auditd            — target for the hardening playbook (PCI-DSS req 10)
 #   sudo              — for become: true in playbooks
 #
@@ -22,9 +22,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install everything the hardening playbook will manage
 RUN apt-get update && apt-get install -y --no-install-recommends \
     openssh-server \
-    python3 \
-    python3-apt \
-    python3-psycopg2 \
+    python \
+    python-apt \
+    python-psycopg2 \
     sudo \
     auditd \
     audispd-plugins \
