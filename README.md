@@ -1,4 +1,4 @@
-# tch-prep — TCH / Talon Assessment Practice Lab
+# tch-prep — TCH / Assessment Practice Lab
 
 Hands-on practice environment for the **55-minute Verify assessment**.  
 Everything runs locally on **Mac M1 with OrbStack**. No AWS account needed.
@@ -361,5 +361,5 @@ During the assessment:
 
 ---
 
-*Created for TCH / Talon Verify assessment — May 2026*  
+*Created for TCH / Verify assessment — May 2026*  
 *Reference: `tch_prep_claude0.md` | Assessment deadline: 2026-05-26*
