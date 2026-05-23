@@ -35,7 +35,7 @@ echo "    Vault is running (dev mode, auto-unsealed)"
 # ── 2. Verify Postgres is reachable ───────────────────────────────────────
 echo ""
 echo "==> Checking PostgreSQL connectivity..."
-if ! docker exec tch-postgres pg_isready -U vault_admin -q 2>/dev/null; then
+if ! docker exec tch-mac-postgres pg_isready -U vault_admin -q 2>/dev/null; then
     echo "ERROR: PostgreSQL is not ready"
     echo "       Run: make up  and wait for containers to be healthy"
     exit 1
@@ -53,11 +53,11 @@ echo ""
 echo "==> Configuring Vault ↔ PostgreSQL connection..."
 # Vault connects as vault_admin and uses {{username}}/{{password}} template
 # to create/revoke dynamic credentials.
-# The container is on the docker-compose network; use tch-postgres as hostname.
+# The container is on the docker-compose network; use tch-mac-postgres as hostname.
 vault write database/config/payments-db \
     plugin_name=postgresql-database-plugin \
     allowed_roles="payment-role" \
-    connection_url="postgresql://{{username}}:{{password}}@tch-postgres:5432/payments?sslmode=disable" \
+    connection_url="postgresql://{{username}}:{{password}}@tch-mac-postgres:5432/payments?sslmode=disable" \
     username="vault_admin" \
     password="vault_admin_pass"
 

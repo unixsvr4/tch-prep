@@ -1,4 +1,4 @@
-# tch-prep — TCH / Assessment Practice Lab
+# tch-mac-prep — TCH / Assessment Practice Lab (Mac M1)
 
 Hands-on practice environment for the **55-minute Verify assessment**.  
 Everything runs locally on **Mac M1 with OrbStack**. No AWS account needed.
@@ -8,7 +8,7 @@ Everything runs locally on **Mac M1 with OrbStack**. No AWS account needed.
 ## What's in this repo
 
 ```
-tch-prep/
+tch-mac-prep/
 ├── terraform/
 │   ├── day1-bad/        ← All 10 insecure examples — run checkov, see every issue flagged
 │   ├── day1-good/       ← All 10 secure fixes — terraform validate + checkov clean
@@ -37,15 +37,15 @@ tch-prep/
 
 ## Quick Start (entire setup in ~10 minutes)
 
-> **All `make` commands must be run from inside the `tch-prep/` directory.**
+> **All `make` commands must be run from inside the `tch-mac-prep/` directory.**
 > ```bash
-> cd tch-prep   # do this once — all commands below assume you're here
+> cd tch-mac-prep   # do this once — all commands below assume you're here
 > ```
 
 ### Step 1 — Install tools (one-time)
 
 ```bash
-cd tch-prep
+cd tch-mac-prep
 make install-tools
 ```
 
@@ -69,10 +69,10 @@ Starts 4 containers:
 
 | Container | How to access | Protocol |
 |-----------|--------------|----------|
-| `tch-vault` | Chrome → http://localhost:8200 (token: `root`) | HTTP — browser works |
-| `tch-postgres` | `psql -h localhost -p 5432 -U vault_admin -d payments` | PostgreSQL wire — **not a browser** |
-| `tch-localstack` | `curl http://localhost:4566/_localstack/health` | HTTP — use curl or aws CLI, not browser root |
-| `tch-ansible-target` | `ssh -i ansible/demo_key -p 2222 root@localhost` | SSH — **not a browser** |
+| `tch-mac-vault` | Chrome → http://localhost:8200 (token: `root`) | HTTP — browser works |
+| `tch-mac-postgres` | `psql -h localhost -p 5432 -U vault_admin -d payments` | PostgreSQL wire — **not a browser** |
+| `tch-mac-localstack` | `curl http://localhost:4566/_localstack/health` | HTTP — use curl or aws CLI, not browser root |
+| `tch-mac-ansible-target` | `ssh -i ansible/demo_key -p 2222 root@localhost` | SSH — **not a browser** |
 
 > **Only Vault has a browser UI.** PostgreSQL speaks the Postgres wire protocol; Ansible target speaks SSH;
 > LocalStack has an HTTP API but no browser UI — verify it with `curl` or `make status`.
@@ -363,5 +363,5 @@ During the assessment:
 
 ---
 
-*Created for TCH / Verify assessment — May 2026*  
+*Created for TCH / Verify assessment — May 2026 | Platform: Mac M1 + OrbStack*  
 *Reference: `tch_prep_claude0.md` | Assessment deadline: 2026-05-26*

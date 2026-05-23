@@ -1,5 +1,5 @@
-# tch-prep Makefile
-# Usage: cd tch-prep && make <target>    |    make help
+# tch-mac-prep Makefile
+# Usage: cd tch-mac-prep && make <target>    |    make help
 
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
@@ -7,7 +7,7 @@ SHELL := /bin/bash
 # Guard: fail immediately if run from the wrong directory.
 # Every target depends on this check running first.
 ifeq (,$(wildcard docker-compose.yml))
-$(error Run this from inside tch-prep/: cd /Users/macman/myclaude/tch-prep && make $(MAKECMDGOALS))
+$(error Run this from inside tch-mac-prep/: cd /Users/macman/myclaude/tch-mac-prep && make $(MAKECMDGOALS))
 endif
 
 # Colors via tput (produces real escape bytes -- no literal \033 sequences)
@@ -27,7 +27,7 @@ export AWS_DEFAULT_REGION    ?= us-east-1
 .PHONY: help
 help: ## Show all available targets
 	@echo ""
-	@echo "  $(CYAN)tch-prep -- TCH / Talon Assessment Practice Lab$(RESET)"
+	@echo "  $(CYAN)tch-mac-prep -- TCH / Talon Assessment Practice Lab (Mac M1)$(RESET)"
 	@echo ""
 	@echo "  $(YELLOW)SETUP$(RESET)"
 	@grep -E '^(setup|install-tools)[^:]*:.*##' $(MAKEFILE_LIST) | \
@@ -68,11 +68,11 @@ install-tools: ## Install all required tools via Homebrew (one-time)
 
 .PHONY: setup
 setup: ## Generate demo SSH key, build containers, copy .env (run once before make up)
-	@echo "$(CYAN)==> Setting up tch-prep practice lab...$(RESET)"
+	@echo "$(CYAN)==> Setting up tch-mac-prep practice lab...$(RESET)"
 	@[ -f .env ] || (cp .env.example .env && echo "  Created .env from .env.example")
 	@if [ ! -f ansible/demo_key ]; then \
 		echo "  Generating demo SSH key for Ansible (DEMO USE ONLY)..."; \
-		ssh-keygen -t ed25519 -f ansible/demo_key -N "" -C "tch-prep-demo@local" -q; \
+		ssh-keygen -t ed25519 -f ansible/demo_key -N "" -C "tch-mac-prep-demo@local" -q; \
 		echo "  $(GREEN)Key generated: ansible/demo_key$(RESET)"; \
 	else \
 		echo "  Demo key already exists -- skipping"; \
@@ -89,7 +89,7 @@ setup: ## Generate demo SSH key, build containers, copy .env (run once before ma
 
 .PHONY: up
 up: ## Start all services (vault, postgres, localstack, ansible-target)
-	@echo "$(CYAN)==> Starting tch-prep services...$(RESET)"
+	@echo "$(CYAN)==> Starting tch-mac-prep services...$(RESET)"
 	@docker compose up -d
 	@echo ""
 	@sleep 5
@@ -129,7 +129,7 @@ status: ## Verify all 4 services are up and responding correctly
 		echo "$(GREEN)UP$(RESET) -- curl http://localhost:4566/_localstack/health" || \
 		echo "$(YELLOW)DOWN$(RESET) -- run: make up"
 	@printf "  %-18s" "Postgres (5432):"
-	@docker exec tch-postgres pg_isready -U vault_admin -q 2>/dev/null && \
+	@docker exec tch-mac-postgres pg_isready -U vault_admin -q 2>/dev/null && \
 		echo "$(GREEN)UP$(RESET) -- psql -h localhost -p 5432 -U vault_admin -d payments" || \
 		echo "$(YELLOW)DOWN$(RESET) -- run: make up"
 	@printf "  %-18s" "Ansible SSH (2222):"
@@ -265,7 +265,7 @@ ansible-secrets-demo: ## Day 2: Demo ansible-vault encrypt/decrypt (no_log patte
 	@echo "   ansible-vault encrypt ansible/group_vars/prod/vault_example.yml"
 	@echo ""
 	@echo "--- Live demo ---"
-	@printf 'tch-demo-vault-pass' > /tmp/vpass && \
+	@printf 'tch-mac-demo-vault-pass' > /tmp/vpass && \
 		ansible-vault encrypt_string 'Pg@ssw0rd2024!' --name 'db_password' \
 		--vault-password-file /tmp/vpass 2>/dev/null && rm -f /tmp/vpass
 

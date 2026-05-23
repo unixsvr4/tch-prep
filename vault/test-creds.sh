@@ -45,7 +45,7 @@ echo ""
 
 # Try to connect to PostgreSQL inside the container with the dynamic credential
 echo "Testing connection to PostgreSQL with dynamic credential..."
-RESULT=$(docker exec tch-postgres \
+RESULT=$(docker exec tch-mac-postgres \
     bash -c "PGPASSWORD='$DB_PASS' psql -U '$DB_USER' -d payments -c 'SELECT transaction_id, amount, status FROM payments LIMIT 3;' 2>&1" \
     || echo "CONNECTION_FAILED")
 
@@ -58,7 +58,7 @@ if echo "$RESULT" | grep -q "transaction_id"; then
 else
     echo ""
     echo "Direct psql test (inside container):"
-    echo "  docker exec -it tch-postgres psql -U '$DB_USER' -d payments"
+    echo "  docker exec -it tch-mac-postgres psql -U '$DB_USER' -d payments"
     echo "  Password: (use vault read database/creds/payment-role to get it)"
 fi
 

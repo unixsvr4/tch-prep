@@ -30,7 +30,7 @@ check_or_install() {
 }
 
 echo ""
-echo -e "${CYAN}==> tch-prep: Installing all required tools${RESET}"
+echo -e "${CYAN}==> tch-mac-prep: Installing all required tools (Mac M1 + Homebrew)${RESET}"
 echo ""
 
 # ── Infrastructure ────────────────────────────────────────────────────────

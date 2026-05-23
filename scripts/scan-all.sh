@@ -26,7 +26,7 @@ TOTAL_PASS=0
 
 echo ""
 echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${RESET}"
-echo -e "${CYAN}║  tch-prep Security Scan — All Terraform Configurations   ║${RESET}"
+echo -e "${CYAN}║  tch-mac-prep Security Scan — All Terraform Configs      ║${RESET}"
 echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${RESET}"
 echo ""
 echo "Scanners: checkov | tfsec | trivy config"

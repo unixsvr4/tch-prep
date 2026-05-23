@@ -1,5 +1,5 @@
 ---
-# tch-prep docker-compose — all services for local practice
+# tch-mac-prep docker-compose — all services for local practice (Mac M1 + OrbStack)
 # Requires OrbStack (Mac M1). All images have native ARM64 support.
 #
 # Start:  make up
@@ -17,7 +17,7 @@ services:
   # accepts any root token — it exists solely for local experimentation.
   vault:
     image: hashicorp/vault:1.16
-    container_name: tch-vault
+    container_name: tch-mac-vault
     ports:
       - "8200:8200"
     environment:
@@ -44,7 +44,7 @@ services:
   # Password: vault_admin_pass  (from .env.example — local dev only)
   postgres:
     image: postgres:16-alpine
-    container_name: tch-postgres
+    container_name: tch-mac-postgres
     ports:
       - "5432:5432"
     environment:
@@ -72,7 +72,7 @@ services:
   # S3:     aws --endpoint-url=http://localhost:4566 s3 ls
   localstack:
     image: localstack/localstack:3.4
-    container_name: tch-localstack
+    container_name: tch-mac-localstack
     ports:
       - "4566:4566"
     environment:
@@ -103,7 +103,7 @@ services:
     build:
       context: ./docker/ansible-target
       dockerfile: Dockerfile
-    container_name: tch-ansible-target
+    container_name: tch-mac-ansible-target
     ports:
       - "2222:22"
     networks:
@@ -112,10 +112,10 @@ services:
 networks:
   tch-net:
     driver: bridge
-    name: tch-practice-network
+    name: tch-mac-practice-network
 
 volumes:
   postgres_data:
-    name: tch-postgres-data
+    name: tch-mac-postgres-data
   localstack_data:
-    name: tch-localstack-data
+    name: tch-mac-localstack-data
